@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Band Watch</title>
+  <meta name="description" content="Live ham band conditions for any grid, ZIP or city, from PSK Reporter spots.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f766e'/><path d='M5 20q5-12 11 0t11 0' stroke='white' stroke-width='3' fill='none' stroke-linecap='round'/></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>Band Watch</h1>
+      <p class="tag">Who's hearing your area right now, by band and mode. The data comes from <a href="https://pskreporter.info" target="_blank" rel="noopener">PSK Reporter</a>.</p>
+    </div>
+  </header>
+
+  <main>
+    <form id="search" class="panel controls" autocomplete="off">
+      <div class="field grow">
+        <label for="q">Location</label>
+        <div class="inline">
+          <input id="q" name="q" type="text" placeholder="Grid (FN31), ZIP (06103), or city (Hartford, CT)" required>
+          <button type="button" id="geo" class="ghost" title="Use my location" aria-label="Use my location">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="dir">Show</label>
+        <select id="dir" name="dir">
+          <option value="tx">Stations in the area being heard</option>
+          <option value="rx">What stations in the area hear</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="win">Window</label>
+        <select id="win" name="win">
+          <option value="900">Last 15 min</option>
+          <option value="1800">Last 30 min</option>
+          <option value="3600">Last hour</option>
+          <option value="10800">Last 3 hours</option>
+          <option value="21600">Last 6 hours</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="label">&nbsp;</span>
+        <button type="submit" id="go">Check bands</button>
+      </div>
+    </form>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <section id="results" hidden>
+      <div class="summary panel">
+        <div class="where">
+          <div class="grid-badge" id="gridBadge">FN31</div>
+          <div>
+            <div class="place" id="place"></div>
+            <div class="meta" id="meta"></div>
+          </div>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="actions">
+          <div class="seg" role="group" aria-label="Distance units">
+            <button type="button" data-unit="mi">mi</button>
+            <button type="button" data-unit="km">km</button>
+          </div>
+          <button type="button" id="refresh" class="ghost">Refresh</button>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div class="panel table-panel">
+          <h2>Bands</h2>
+          <p class="hint" id="bandHint"></p>
+          <div class="scroll">
+            <table class="bands" id="bandTable">
+              <thead>
+                <tr>
+                  <th scope="col">Band</th>
+                  <th scope="col" class="num" id="hLocal">Local stns</th>
+                  <th scope="col" class="num" id="hRemote">Heard by</th>
+                  <th scope="col" class="num">Spots</th>
+                  <th scope="col" class="num">DXCC</th>
+                  <th scope="col" class="num">Best DX</th>
+                  <th scope="col" class="num">Med SNR</th>
+                  <th scope="col">Modes</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel map-panel">
+          <div class="map-head">
+            <h2 id="mapTitle">Map</h2>
+            <button type="button" id="clearBand" class="ghost small" hidden>Show all bands</button>
+          </div>
+          <div id="map"></div>
+          <div class="legend" id="legend"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Band × mode</h2>
+        <p class="hint" id="matrixHint"></p>
+        <div class="scroll"><table class="matrix" id="matrix"></table></div>
+      </div>
+    </section>
+
+    <section id="about" class="panel about">
+      <h2>How it works</h2>
+      <ul>
+        <li>Your location becomes a 4-character Maidenhead grid square (about 70&nbsp;×&nbsp;100&nbsp;mi). The app asks PSK Reporter for every reception report in that square during the window you picked.</li>
+        <li><strong>Stations in the area being heard</strong> counts how many distinct stations are hearing transmitters located in the square. This is the best way to tell which bands are open <em>from</em> there.</li>
+        <li><strong>What stations in the area hear</strong> flips the direction: it shows what receivers in the square are decoding.</li>
+        <li>PSK Reporter asks clients to query no more than once every 5 minutes, so results are cached and Refresh unlocks after that.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    Spot data © <a href="https://pskreporter.info" target="_blank" rel="noopener">PSK Reporter</a> (Philip Gladstone). Geocoding © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors via Nominatim.
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
