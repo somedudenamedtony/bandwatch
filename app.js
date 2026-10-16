@@ -540,3 +540,11 @@ function init() {
 }
 
 init();
+
+// ---------- Installable app ----------
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* app still works without it */ });
+  });
+}
